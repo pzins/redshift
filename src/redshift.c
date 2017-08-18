@@ -28,6 +28,7 @@
 #include <math.h>
 #include <locale.h>
 #include <errno.h>
+#include <time.h>
 
 #if defined(HAVE_SIGNAL_H) && !defined(__WIN32__)
 # include <signal.h>
@@ -326,12 +327,18 @@ static period_t
 get_period(const transition_scheme_t *transition,
 	   double elevation)
 {
-	if (elevation < transition->low) {
-		return PERIOD_NIGHT;
-	} else if (elevation < transition->high) {
-		return PERIOD_TRANSITION;
-	} else {
+	time_t t = time(NULL);
+    struct tm *tmp = gmtime(&t);
+	//time -4 for Montreal timezone
+	int h = tmp->tm_hour - 4;
+	// keep between 0 and 24
+	if (h < 0) h = 24 + h;
+
+	//time range PERIOD_DAYTIME and PERIOD_NIGHT
+	if (h <= 18 && h > 6) {
 		return PERIOD_DAYTIME;
+	} else {
+		return PERIOD_NIGHT;
 	}
 }
 
