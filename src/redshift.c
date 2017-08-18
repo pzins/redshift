@@ -310,6 +310,8 @@ typedef struct {
 	double low;
 	color_setting_t day;
 	color_setting_t night;
+	int day_time;
+	int night_time;
 } transition_scheme_t;
 
 /* Names of periods of day */
@@ -337,7 +339,7 @@ get_period(const transition_scheme_t *transition,
 
 /* Determine which period we are currently in, using time. */
 static period_t
-get_period_time()
+get_period_time(const transition_scheme_t *transition)
 {
 	time_t t = time(NULL);
     struct tm *tmp = gmtime(&t);
@@ -345,9 +347,9 @@ get_period_time()
 	int h = tmp->tm_hour - 4;
 	// keep between 0 and 24
 	if (h < 0) h = 24 + h;
-
 	//time range PERIOD_DAYTIME and PERIOD_NIGHT
-	if (h <= 18 && h > 6) {
+	if (h <= transition->day_time &&
+		h > transition->night_time) {
 		return PERIOD_DAYTIME;
 	} else {
 		return PERIOD_NIGHT;
@@ -903,7 +905,7 @@ run_continual_mode(const location_t *loc,
 		// use sun to define PERIOD
 		// period_t period = get_period(scheme, elevation);
 		// use time to define PERIOD
-		period_t period = get_period_time();
+		period_t period = get_period_time(scheme);
 		if (verbose && (period != prev_period ||
 				period == PERIOD_TRANSITION)) {
 			double transition =
@@ -1016,6 +1018,9 @@ main(int argc, char *argv[])
 	scheme.night.temperature = -1;
 	scheme.night.gamma[0] = NAN;
 	scheme.night.brightness = NAN;
+
+	scheme.day_time = -1;
+	scheme.night_time = -1;
 
 	/* Temperature for manual mode */
 	int temp_set = -1;
@@ -1214,6 +1219,30 @@ main(int argc, char *argv[])
 				if (scheme.night.temperature < 0) {
 					scheme.night.temperature =
 						atoi(setting->value);
+				}
+			} else if (strcasecmp(setting->name,
+					      "end-night") == 0) {
+				if (scheme.night_time < 0) {
+					scheme.night_time =
+						atoi(setting->value);
+					if(scheme.night_time < 0 || scheme.night_time > 24) {
+						fputs(_("Malformed end-night"
+							" setting.\n"),
+						      stderr);
+						exit(EXIT_FAILURE);
+					}
+				}
+			} else if (strcasecmp(setting->name,
+					      "end-day") == 0) {
+				if (scheme.day_time < 0) {
+					scheme.day_time =
+						atoi(setting->value);
+					if(scheme.day_time < 0 || scheme.day_time > 24) {
+						fputs(_("Malformed end-day"
+							" setting.\n"),
+						      stderr);
+						exit(EXIT_FAILURE);
+					}
 				}
 			} else if (strcasecmp(setting->name,
 					      "transition") == 0) {
