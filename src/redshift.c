@@ -321,11 +321,23 @@ static const char *period_names[] = {
 	N_("Transition")
 };
 
-
-/* Determine which period we are currently in. */
+/* Determine which period we are currently in, using sun. */
 static period_t
 get_period(const transition_scheme_t *transition,
 	   double elevation)
+{
+	if (elevation < transition->low) {
+		return PERIOD_NIGHT;
+	} else if (elevation < transition->high) {
+		return PERIOD_TRANSITION;
+	} else {
+		return PERIOD_DAYTIME;
+	}
+}
+
+/* Determine which period we are currently in, using time. */
+static period_t
+get_period_time()
 {
 	time_t t = time(NULL);
     struct tm *tmp = gmtime(&t);
@@ -888,7 +900,10 @@ run_continual_mode(const location_t *loc,
 		   or if we are in transition. In transition we
 		   print the progress, so we always print it in
 		   that case. */
-		period_t period = get_period(scheme, elevation);
+		// use sun to define PERIOD
+		// period_t period = get_period(scheme, elevation);
+		// use time to define PERIOD
+		period_t period = get_period_time();
 		if (verbose && (period != prev_period ||
 				period == PERIOD_TRANSITION)) {
 			double transition =
