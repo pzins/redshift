@@ -289,8 +289,8 @@ typedef struct {
 	double low;
 	color_setting_t day;
 	color_setting_t night;
-	int day_time;
-	int night_time;
+	int day_end;
+	int night_end;
 } transition_scheme_t;
 
 /* Names of periods of day */
@@ -327,8 +327,8 @@ get_period_time(const transition_scheme_t *transition)
 	// keep between 0 and 24
 	if (h < 0) h = 24 + h;
 	//time range PERIOD_DAYTIME and PERIOD_NIGHT
-	if (h <= transition->day_time &&
-		h > transition->night_time) {
+	if (h < transition->day_end &&
+		h > transition->night_end) {
 		return PERIOD_DAYTIME;
 	} else {
 		return PERIOD_NIGHT;
@@ -412,6 +412,30 @@ interpolate_color_settings(const transition_scheme_t *transition,
 	}
 }
 
+static void
+set_color_settings_time(const transition_scheme_t *scheme, const period_t period,
+	 		 color_setting_t* result)
+{
+	if(period == PERIOD_DAYTIME) {
+		result->temperature = scheme->day.temperature;
+		result->brightness = scheme->day.brightness;
+		result->gamma[0] = scheme->day.gamma[0];
+		result->gamma[1] = scheme->day.gamma[1];
+		result->gamma[2] = scheme->day.gamma[2];
+	} else {
+		result->temperature = scheme->night.temperature;
+		result->brightness = scheme->night.brightness;
+		result->gamma[0] = scheme->night.gamma[0];
+		result->gamma[1] = scheme->night.gamma[1];
+		result->gamma[2] = scheme->night.gamma[2];
+	}
+	// debug
+	// printf(">> %d\n", result->temperature);
+	// printf(">> %f\n", result->brightness);
+	// printf(">> %f\n", result->gamma[0]);
+	// printf(">> %f\n", result->gamma[1]);
+	// printf(">> %f\n", result->gamma[2]);
+}
 
 static void
 print_help(const char *program_name)
@@ -883,8 +907,23 @@ run_continual_mode(const location_t *loc,
 		   that case. */
 		// use sun to define PERIOD
 		// period_t period = get_period(scheme, elevation);
+
 		// use time to define PERIOD
 		period_t period = get_period_time(scheme);
+		// set color according to the period (the time), we don't care
+		// about the previous interpolate_color_settings
+		// because we don't use the sun
+		set_color_settings_time(scheme, period, &interp);
+
+		// debug
+		// if(period == PERIOD_DAYTIME)
+		// 	printf("DAY\n");
+		// else if(period == PERIOD_NIGHT)
+		// 	printf("NIGHT\n");
+		// else
+		// 	printf("ERROR\n");
+
+
 		if (verbose && (period != prev_period ||
 				period == PERIOD_TRANSITION)) {
 			double transition =
@@ -916,12 +955,12 @@ run_continual_mode(const location_t *loc,
 
 		/* Interpolate between 6500K and calculated
 		   temperature */
+
 		interp.temperature = adjustment_alpha*6500 +
 			(1.0-adjustment_alpha)*interp.temperature;
 
 		interp.brightness = adjustment_alpha*1.0 +
 			(1.0-adjustment_alpha)*interp.brightness;
-
 		/* Quit loop when done */
 		if (done && !short_trans_delta) break;
 
@@ -998,8 +1037,8 @@ main(int argc, char *argv[])
 	scheme.night.gamma[0] = NAN;
 	scheme.night.brightness = NAN;
 
-	scheme.day_time = -1;
-	scheme.night_time = -1;
+	scheme.day_end = -1;
+	scheme.night_end = -1;
 
 	/* Temperature for manual mode */
 	int temp_set = -1;
@@ -1201,10 +1240,10 @@ main(int argc, char *argv[])
 				}
 			} else if (strcasecmp(setting->name,
 					      "end-night") == 0) {
-				if (scheme.night_time < 0) {
-					scheme.night_time =
+				if (scheme.night_end < 0) {
+					scheme.night_end =
 						atoi(setting->value);
-					if(scheme.night_time < 0 || scheme.night_time > 24) {
+					if(scheme.night_end < 0 || scheme.night_end > 24) {
 						fputs(_("Malformed end-night"
 							" setting.\n"),
 						      stderr);
@@ -1213,10 +1252,10 @@ main(int argc, char *argv[])
 				}
 			} else if (strcasecmp(setting->name,
 					      "end-day") == 0) {
-				if (scheme.day_time < 0) {
-					scheme.day_time =
+				if (scheme.day_end < 0) {
+					scheme.day_end =
 						atoi(setting->value);
-					if(scheme.day_time < 0 || scheme.day_time > 24) {
+					if(scheme.day_end < 0 || scheme.day_end > 24) {
 						fputs(_("Malformed end-day"
 							" setting.\n"),
 						      stderr);
