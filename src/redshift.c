@@ -328,7 +328,7 @@ get_period_time(const transition_scheme_t *transition)
 	if (h < 0) h = 24 + h;
 	//time range PERIOD_DAYTIME and PERIOD_NIGHT
 	if (h < transition->day_end &&
-		h > transition->night_end) {
+		h >= transition->night_end) {
 		return PERIOD_DAYTIME;
 	} else {
 		return PERIOD_NIGHT;
